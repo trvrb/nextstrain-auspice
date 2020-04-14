@@ -30,17 +30,19 @@ const makeFrontMatterBlock = (frontMatter) => {
   const markdown = [];
   markdown.push(`## ${frontMatter.title}`);
   if (frontMatter.authors) {
-    const authors = parseContributors(frontMatter, "authors", "authorLinks");
+    const authors = parseContributors(frontMatter, "authors");
     if (authors) {
       markdown.push(`### Author: ${authors}`);
       if (frontMatter.affiliations && typeof frontMatter.affiliations === "string") {
         markdown[markdown.length-1] += " <sup> 1 </sup>";
         markdown.push(`<sub><sup> 1 </sup> ${frontMatter.affiliations}</sub>`);
+      } else if (frontMatter.affiliations) {
+        markdown.push("<sub>" + parseAffiliations(frontMatter.affiliations) + "</sub>");
       }
     }
   }
   if (frontMatter.translators) {
-    const translators = parseContributors(frontMatter, "translators", "translatorLinks");
+    const translators = parseContributors(frontMatter, "translators");
     if (translators) {
       markdown.push(`### Translators: ${translators}`);
     }
@@ -61,16 +63,69 @@ const makeFrontMatterBlock = (frontMatter) => {
   return block;
 };
 
+function parseAffiliations(affiliations) {
+   return Object.keys(affiliations).map((key, i) => {
+     return `<sup>${i+1}</sup>${affiliations[key]}`;
+   }).join(", ");
+}
+
 function parseContributors(frontMatter, contributorsKey, contributorLinksKey) {
   const contributors = frontMatter[contributorsKey];
-  const contributorLinks = frontMatter[contributorLinksKey];
 
-  if (Array.isArray(contributors)) {
+  if (Array.isArray(contributors) && typeof(contributors) === "string") {
+    const contributorLinksKey = contributorsKey + "Links";
+    const contributorLinks = frontMatter[contributorLinksKey];
     return parseContributorsArray(contributors, contributorLinks, contributorsKey, contributorLinksKey);
   } else if (typeof contributors === 'string') {
+    const contributorLinksKey = contributorsKey + "Links";
+    const contributorLinks = frontMatter[contributorLinksKey];
     return parseContributorsString(contributors, contributorLinks, contributorsKey, contributorLinksKey);
+  } else if (typeof contributors === "object") {
+    let affiliations = undefined;
+    if (frontMatter.affiliations) {
+      affiliations = frontMatter.affiliations
+    }
+    return parseContributorsObject(contributors, affiliations)
   }
   return undefined;
+}
+
+function parseContributorsObject(contributors, affiliations) {
+  contributors = contributors.map(contributor => {
+    const name = Object.keys(contributor)[0];
+    if (contributor[name].link) {
+      return contributorLink(name, contributor[name].link) + authorAffiliation(contributor, affiliations);
+    } else {
+      return name + authorAffiliation(contributor, affiliations);
+    }
+  });
+  return contributors.join(", ");
+}
+
+function authorAffiliation(contributor, affiliations) {
+  const name = Object.keys(contributor)[0]
+  contributor = contributor[name];
+  if (contributor.affiliation) {
+    if (Array.isArray(contributor.affiliation)) {
+      const indicies = contributor.affiliation.map(affiliation => {
+        return affiliationIndex(affiliation, affiliations);
+      }).join(",");
+      return `<sup>${indicies}</sup>`;
+    } else if (typeof(contributor.affiliation) === "string") {
+      const index = affiliationIndex(contributor.affiliation, affiliations);
+      return `<sup>${index}</sup>`;
+    }
+    utils.warn(`Narrative parsing - cannot parse the affiliation for ${name}.`)
+  }
+  return "";
+}
+
+function affiliationIndex(affiliation, affiliations) {
+  const index = Object.keys(affiliations).indexOf(affiliation) + 1
+  if (index > 0) {
+    return index;
+  }
+  utils.warn(`Narrative parsing - affiliation ${affiliation} not found.`);
 }
 
 function parseContributorsArray(contributors, contributorLinks, contributorsKey, contributorLinksKey) {
