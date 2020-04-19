@@ -177,13 +177,14 @@ class ColorBy extends React.Component {
 
   render() {
     const styles = this.getStyles();
+
     const colorOptions = Object.keys(this.props.colorings)
       .map((key) => ({value: key, label: this.props.colorings[key].title}));
+
     return (
-      <div style={styles.base}>
+      <div style={styles.base} id="selectColorBy">
         <Select
           name="selectColorBy"
-          id="selectColorBy"
           value={this.state.colorBySelected}
           options={colorOptions}
           clearable={false}

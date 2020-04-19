@@ -7,6 +7,7 @@ globals:
   browser: true
   context: true
   jestPuppeteer: true
+  BASE_URL: true
 rules:
   camelcase: off # require camel case names
   prefer-template: off

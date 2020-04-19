@@ -1,4 +1,7 @@
 import { setDefaultOptions } from 'expect-puppeteer';
+import { toMatchImageSnapshot } from 'jest-image-snapshot';
+
+expect.extend({ toMatchImageSnapshot });
 
 // (tihuan): This is the max time a test can take to run.
 // Since when debugging, we run slowMo and !headless, this means
@@ -6,6 +9,8 @@ import { setDefaultOptions } from 'expect-puppeteer';
 // jest to shut off the test too soon
 jest.setTimeout(30 * 1000);
 setDefaultOptions({ timeout: 3 * 1000 });
+
+jest.retryTimes(4);
 
 beforeEach(async () => {
   await jestPuppeteer.resetBrowser();

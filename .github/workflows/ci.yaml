@@ -32,6 +32,9 @@ jobs:
       - run: npm run get-data
       - run: npm run get-narratives
       - run: npm run integration-test:ci
+        env:
+          SCREENSHOT_UPLOAD_URL: https://us-central1-oss-automation.cloudfunctions.net/github-image-commenter
+          ACTION_LOG_FILE: "npm run integration-testci"
   lint:
     runs-on: ubuntu-latest
     strategy:

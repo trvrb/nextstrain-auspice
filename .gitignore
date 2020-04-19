@@ -16,3 +16,6 @@ s3/
 node_modules/
 npm-debug.log
 *tgz
+
+### IDE ###
+.vscode/*

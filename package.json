@@ -136,6 +136,8 @@
     "eslint-plugin-react": "^7.2.1",
     "eslint-plugin-react-hooks": "^1.6.0",
     "jest": "^25.1.0",
+    "jest-circus": "^25.3.0",
+    "jest-image-snapshot": "^3.0.1",
     "jest-puppeteer": "^4.4.0",
     "puppeteer": "^2.1.1",
     "start-server-and-test": "^1.11.0",
