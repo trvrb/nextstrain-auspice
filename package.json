@@ -7,7 +7,7 @@
   "repository": "github:nextstrain/auspice",
   "homepage": "https://www.npmjs.com/package/auspice",
   "engines": {
-    "node": "10.8.x",
+    "node": "^10.8.x",
     "npm": "6.2.x"
   },
   "bin": {
