@@ -31,7 +31,8 @@ class Language extends React.Component {
       {value: "pt", label: "Português"},
       {value: "fr", label: "Français"},
       {value: "tr", label: "Türkçe"},
-      {value: "ja", label: "日本語"}
+      {value: "ja", label: "日本語"},
+      {value: "zh", label: "中文"}
     ];
     return languages;
   }
