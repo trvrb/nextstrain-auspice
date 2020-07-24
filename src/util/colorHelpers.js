@@ -51,22 +51,12 @@ export const getExtraVals = (nodes, nodesToo, colorBy, providedVals) => {
   return valsInTree.filter((x) => providedVals.indexOf(x) === -1);
 };
 
-
-/* a getter for the value of the colour attribute of the node provided for the currently set colour
-note this is not the colour HEX */
-export const getTipColorAttribute = (node, colorScale) => {
-  if (isColorByGenotype(colorScale.colorBy) && colorScale.genotype) {
-    return node.currentGt;
-  }
-  return getTraitFromNode(node, colorScale.colorBy);
-};
-
 /* generates and returns an array of colours (HEXs) for the nodes under the given colorScale */
 /* takes around 2ms on a 2000 tip tree */
 export const calcNodeColor = (tree, colorScale) => {
   if (tree && tree.nodes && colorScale && colorScale.colorBy) {
-    const nodeColorAttr = tree.nodes.map((n) => getTipColorAttribute(n, colorScale));
-    // console.log(nodeColorAttr.map((n) => colorScale.scale(n)))
+    const genotype = isColorByGenotype(colorScale.colorBy);
+    const nodeColorAttr = tree.nodes.map((n) => getTraitFromNode(n, colorScale.colorBy, {genotype}));
     return nodeColorAttr.map((n) => colorScale.scale(n));
   }
   return null;

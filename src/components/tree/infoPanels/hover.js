@@ -1,7 +1,6 @@
 import React from "react";
 import { infoPanelStyles } from "../../../globalStyles";
 import { numericToCalendar } from "../../../util/dateHelpers";
-import { getTipColorAttribute } from "../../../util/colorHelpers";
 import { isColorByGenotype, decodeColorByGenotype } from "../../../util/getGenotype";
 import { getTraitFromNode, getDivFromNode, getVaccineFromNode, getFullAuthorInfoFromNode } from "../../../util/treeMiscHelpers";
 import { isValueValid } from "../../../util/globals";
@@ -87,7 +86,7 @@ const ColorBy = ({node, colorBy, colorByConfidence, colorScale, colorings}) => {
     const name = genotype.aa ?
       `Amino Acid at ${genotype.gene} site ${genotype.positions.join(", ")}:` :
       `Nucleotide at pos ${genotype.positions.join(", ")}:`;
-    return <InfoLine name={name} value={getTipColorAttribute(node, colorScale)}/>;
+    return <InfoLine name={name} value={getTraitFromNode(node, colorScale.colorBy, {genotype: true})}/>;
   }
   /* handle author as a special case */
   if (colorBy === "author") {

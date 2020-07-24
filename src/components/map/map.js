@@ -365,6 +365,7 @@ class Map extends React.Component {
    */
   maybeUpdateDemesAndTransmissions(nextProps) {
     if (!this.state.map || !this.props.treeLoaded || !this.state.d3elems) { return; }
+
     const visibilityChange = nextProps.visibilityVersion !== this.props.visibilityVersion;
     const haveData = nextProps.nodes && nextProps.visibility && nextProps.geoResolution && nextProps.nodeColors;
 

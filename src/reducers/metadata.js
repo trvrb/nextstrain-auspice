@@ -1,5 +1,6 @@
 import { colorOptions } from "../util/globals";
 import * as types from "../actions/types";
+import { isColorByGenotype } from "../util/getGenotype";
 
 /* The metdata reducer holds data that is
  * (a) mostly derived from the dataset JSON
@@ -30,6 +31,13 @@ const Metadata = (state = {
         return Object.assign({}, state, {buildUrl});
       }
       return state;
+    case types.NEW_COLORS: {
+      const geoResolutions = state.geoResolutions.filter((r) => !r.isGenotype);
+      if (isColorByGenotype(action.colorBy)) {
+        geoResolutions.push({key: action.colorBy, title: action.colorBy, isGenotype: true});
+      }
+      return {...state, geoResolutions};
+    }
     default:
       return state;
   }

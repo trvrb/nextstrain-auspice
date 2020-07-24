@@ -16,7 +16,7 @@ import { computeMatrixFromRawData } from "../util/processFrequencies";
 import { applyInViewNodesToTree } from "../actions/tree";
 import { isColorByGenotype, decodeColorByGenotype } from "../util/getGenotype";
 import { getTraitFromNode, getDivFromNode } from "../util/treeMiscHelpers";
-
+import { getMapTypesAvailable } from "../util/spatialResolutionHelpers";
 
 export const doesColorByHaveConfidence = (controlsState, colorBy) =>
   controlsState.coloringsPresentOnTreeWithConfidence.has(colorBy);
@@ -66,6 +66,9 @@ const modifyStateViaURLQuery = (state, query) => {
   }
   if (query.r) {
     state["geoResolution"] = query.r;
+  }
+  if (Object.hasOwnProperty.call(query, "showNetwork")) {
+    state.mapDisplayType = "network";
   }
   if (query.p && state.canTogglePanelLayout && (query.p === "full" || query.p === "grid")) {
     state["panelLayout"] = query.p;
@@ -446,6 +449,9 @@ const checkAndCorrectErrorsInState = (state, metadata, query, tree, viewingNarra
 
   /* geoResolutions */
   if (metadata.geoResolutions) {
+    if (isColorByGenotype(state.colorBy)) { // already error corrected above
+      metadata.geoResolutions.push({key: state.colorBy, title: state.colorBy, isGenotype: true});
+    }
     const availableGeoResultions = metadata.geoResolutions.map((i) => i.key);
     if (availableGeoResultions.indexOf(state["geoResolution"]) === -1) {
       /* fallbacks: JSON defined default, then hardocded default, then any available */
@@ -459,6 +465,18 @@ const checkAndCorrectErrorsInState = (state, metadata, query, tree, viewingNarra
       console.error("Error detected. Setting geoResolution to ", state.geoResolution);
       delete query.r; // no-op if query.r doesn't exist
     }
+
+    /* only once the geo-res has been set can we decide on the mapDisplayType and mapDisplayTypesAvailable */
+    const { mapDisplayType, mapDisplayTypesAvailable } = getMapTypesAvailable({
+      currentMapDisplayType: state.mapDisplayType,
+      currentMapDisplayTypesAvailable: state.mapDisplayTypesAvailable,
+      newGeoResolution: state.geoResolution,
+      geoResolutions: metadata.geoResolutions
+    });
+    state.mapDisplayType = mapDisplayType;
+    state.mapDisplayTypesAvailable = mapDisplayTypesAvailable;
+    if (state.mapDisplayTypesAvailable.length === 1 || state.mapDisplayType === "geo") delete query.showNetwork;
+
   } else {
     console.warn("JSONs did not include `geoResolutions`");
   }

@@ -10,6 +10,7 @@ import { defaultGeoResolution,
 import * as types from "../actions/types";
 import { calcBrowserDimensionsInitialState } from "./browserDimensions";
 import { doesColorByHaveConfidence } from "../actions/recomputeReduxState";
+import { isColorByGenotype } from "../util/getGenotype";
 
 /* defaultState is a fn so that we can re-create it
 at any time, e.g. if we want to revert things (e.g. on dataset change)
@@ -66,6 +67,8 @@ export const getDefaultControlsState = () => {
     filters: {},
     showDownload: false,
     quickdraw: false, // if true, components may skip expensive computes.
+    mapDisplayType: "geo",
+    mapDisplayTypesAvailable: [],
     mapAnimationDurationInMilliseconds: 30000, // in milliseconds
     mapAnimationStartDate: null, // Null so it can pull the absoluteDateMin as the default
     mapAnimationCumulative: false,
@@ -205,17 +208,27 @@ const Controls = (state = getDefaultControlsState(), action) => {
           action.panelsToDisplay.indexOf("map") !== -1
       });
     case types.NEW_COLORS: {
-      const newState = Object.assign({}, state, {
+      const updatedState = {
         colorBy: action.colorBy,
         colorScale: action.colorScale,
         colorByConfidence: doesColorByHaveConfidence(state, action.colorBy)
-      });
-      return newState;
+      };
+      /* genotype resolutions have to be modified on colorBy change */
+      if (isColorByGenotype(state.geoResolution)) {
+        updatedState.geoResolution = isColorByGenotype(action.colorBy) ?
+          action.colorBy :
+          state.defaults.geoResolution;
+      }
+      return Object.assign({}, state, updatedState);
     }
     case types.CHANGE_GEO_RESOLUTION:
       return Object.assign({}, state, {
-        geoResolution: action.data
+        geoResolution: action.geoResolution,
+        mapDisplayType: action.mapDisplayType,
+        mapDisplayTypesAvailable: action.mapDisplayTypesAvailable
       });
+    case types.CHANGE_MAP_DISPLAY_TYPE:
+      return {...state, mapDisplayType: action.mapDisplayType};
     case types.APPLY_FILTER: {
       // values arrive as array
       const filters = Object.assign({}, state.filters, {});

@@ -25,10 +25,10 @@ james hadfield, nov 2019.
  * NOTE: do not use this for "div", "vaccine" or other traits set on `node_attrs`
  * which don't share the same structure as traits. See the JSON spec for more details.
  */
-export const getTraitFromNode = (node, trait, {entropy=false, confidence=false}={}) => {
+export const getTraitFromNode = (node, trait, {entropy=false, confidence=false, genotype=false}={}) => {
   if (!node.node_attrs) return undefined;
 
-  if (!entropy && !confidence) {
+  if (!entropy && !confidence && !genotype) {
     if (!node.node_attrs[trait]) return undefined;
     const value = node.node_attrs[trait].value;
     if (!isValueValid(value)) return undefined;
@@ -39,6 +39,8 @@ export const getTraitFromNode = (node, trait, {entropy=false, confidence=false}=
   } else if (confidence) {
     if (node.node_attrs[trait]) return node.node_attrs[trait].confidence;
     return undefined;
+  } else if (genotype) {
+    return node.currentGt;
   }
   return undefined;
 };

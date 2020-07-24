@@ -72,7 +72,15 @@ export const changeURLMiddleware = (store) => (next) => (action) => {
       break;
     }
     case types.CHANGE_GEO_RESOLUTION: {
-      query.r = action.data === state.controls.defaults.geoResolution ? undefined : action.data;
+      query.r = action.geoResolution === state.controls.defaults.geoResolution ? undefined : action.geoResolution;
+    }
+    // fall through -- we also want to manipulate the `showNetwork` query when we change resolutions
+    case types.CHANGE_MAP_DISPLAY_TYPE: {
+      if (action.mapDisplayTypesAvailable.length !== 1 && action.mapDisplayType === "network") {
+        query.showNetwork = null; // `null` places it in the URL query without a value
+      } else {
+        query.showNetwork = undefined;
+      }
       break;
     }
     case types.TOGGLE_TRANSMISSION_LINES: {

@@ -1,6 +1,6 @@
 import { tipRadius, tipRadiusOnLegendMatch } from "./globals";
-import { getTipColorAttribute } from "./colorHelpers";
 import { getTraitFromNode } from "../util/treeMiscHelpers";
+import { isColorByGenotype } from "../util/getGenotype";
 
 /**
 * equates a single tip and a legend element
@@ -13,7 +13,7 @@ import { getTraitFromNode } from "../util/treeMiscHelpers";
 * @returns bool
 */
 const determineLegendMatch = (selectedLegendItem, node, colorScale) => {
-  const nodeAttr = getTipColorAttribute(node, colorScale);
+  const nodeAttr = getTraitFromNode(node, colorScale.colorBy, {genotype: isColorByGenotype(colorScale.colorBy)});
   if (colorScale.continuous) {
     return (nodeAttr <= colorScale.legendBounds[selectedLegendItem][1]) &&
            (nodeAttr >= colorScale.legendBounds[selectedLegendItem][0]);

@@ -75,4 +75,12 @@ do
   curl http://data.nextstrain.org/"${i}" --compressed -o data/"${i}"
 done
 
+staging_files=(
+  "testing_states.json" \
+)
+for i in "${staging_files[@]}"
+do
+  curl http://staging.nextstrain.org/"${i}" --compressed -o data/"${i}"
+done
+
 echo "The local data directory ./data now contains up-to-date datasets from http://data.nextstrain.org"

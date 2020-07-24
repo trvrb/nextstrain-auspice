@@ -49,11 +49,12 @@ const maybeGetTransmissionPair = (latOrig, longOrig, latDest, longDest, map) => 
  * Traverses the tips of the tree to create a dict of
  * location(deme) -> list of visible tips at that location
  */
-const getVisibleNodesPerLocation = (nodes, visibility, geoResolution) => {
+export const getVisibleNodesPerLocation = (nodes, visibility, geoResolution) => {
   const locationToVisibleNodes = {};
+  const genotype = isColorByGenotype(geoResolution);
   nodes.forEach((n, i) => {
     if (n.children) return; /* only consider terminal nodes */
-    const location = getTraitFromNode(n, geoResolution);
+    const location = getTraitFromNode(n, geoResolution, {genotype});
     if (!location) return; /* ignore undefined locations */
     if (!locationToVisibleNodes[location]) locationToVisibleNodes[location]=[];
     if (visibility[i] !== NODE_NOT_VISIBLE) {
@@ -73,7 +74,7 @@ const getVisibleNodesPerLocation = (nodes, visibility, geoResolution) => {
  * @param {array} currentArcs only used if updating. Array of current arcs.
  * @returns {array} arcs for display
  */
-const createOrUpdateArcs = (visibleNodes, legendValues, colorBy, nodeColors, currentArcs=undefined) => {
+export const createOrUpdateArcs = (visibleNodes, legendValues, colorBy, nodeColors, currentArcs=undefined) => {
   const colorByIsGenotype = isColorByGenotype(colorBy);
   const legendValueToArcIdx = {};
   const undefinedArcIdx = legendValues.length; /* the arc which is grey to represent undefined values on tips */
