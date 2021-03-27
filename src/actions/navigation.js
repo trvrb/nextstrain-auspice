@@ -1,7 +1,8 @@
 import queryString from "query-string";
 import { createStateFromQueryOrJSONs } from "./recomputeReduxState";
-import { PAGE_CHANGE, URL_QUERY_CHANGE_WITH_COMPUTED_STATE } from "./types";
+import { PAGE_CHANGE, URL_QUERY_CHANGE_WITH_COMPUTED_STATE, SET_ROOT_SEQUENCE } from "./types";
 import { collectDatasetFetchUrls } from "./loadData";
+import { loadFrequencies } from "./frequencies";
 
 /* Given a URL, what "page" should be displayed?
  * "page" means the main app, splash page, status page etc
@@ -36,14 +37,18 @@ const tryCacheThenFetch = async (mainTreeName, secondTreeName, state) => {
   if (!state.jsonCache || !state.jsonCache.jsons) {
     throw new Error("Cache not present");
   }
-  console.log(state, cache)
   const cache = state.jsonCache.jsons;
   if (!cache[mainTreeName] || !cache[mainTreeName].main) {
     throw new Error(`${mainTreeName} not in cache.`);
   }
   const mainJson = await cache[mainTreeName].main;
   const secondJson = cache[secondTreeName] ? await cache[secondTreeName].main : undefined;
-  return {json: mainJson, secondJson};
+  return {
+    json: mainJson,
+    secondJson,
+    tipFrequenciesPromise: cache[mainTreeName].tipFrequencies,
+    rootSequencePromise: cache[mainTreeName].rootJson
+  };
 
   // todo: sidecar files. These are in cache. Turn `tryCacheThenFetch`
   // into an async generator?
@@ -98,7 +103,7 @@ export const changePage = ({
     /* Case 2 (see docstring): the path (dataset) has changed but the we want to remain on the current page and update state with the new dataset */
     const [mainTreeName, secondTreeName] = collectDatasetFetchUrls(path);
     tryCacheThenFetch(mainTreeName, secondTreeName, oldState)
-      .then(({json, secondJson}) => {
+      .then(({json, secondJson, tipFrequenciesPromise, rootSequencePromise}) => {
         const newState = createStateFromQueryOrJSONs({
           json,
           secondTreeDataset: secondJson || false,
@@ -115,6 +120,24 @@ export const changePage = ({
           pushState: push,
           query
         });
+        if (json.meta.panels && json.meta.panels.includes("frequencies")) {
+          tipFrequenciesPromise
+            .then((tipFrequenciesObject) => {
+              dispatch(loadFrequencies(tipFrequenciesObject));
+            })
+            .catch((err) => {
+              console.error("Failed to fetch frequencies", err.message);
+            });
+        }
+        if (rootSequencePromise) {
+          rootSequencePromise
+            .then((rootJson) => {
+              dispatch({type: SET_ROOT_SEQUENCE, rootJson});
+            })
+            .catch((err) => {
+              console.error("Failed to fetch root sequence", err.message);
+            });
+        }
       });
   } else {
     /* Case 3 (see docstring): the path (dataset) has changed and we want to change pages and set a new state according to the path */
