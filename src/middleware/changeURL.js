@@ -157,7 +157,17 @@ export const changeURLMiddleware = (store) => (next) => (action) => {
     }
     case types.UPDATE_VISIBILITY_AND_BRANCH_THICKNESS: {
       // query.s = action.selectedStrain ? action.selectedStrain : undefined;
-      query.label = action.cladeName ? action.cladeName : undefined;
+      if (action.cladeName) {
+        query.label = action.cladeName;
+        query.treeZoom = undefined; // we preferentially restore state from clade (branch) label
+      } else {
+        query.label = undefined;
+        if (action.zoomToSelectedQuery===true) {
+          query.treeZoom="selected"; // setting a string variable allows for future expansion
+        } else if (action.zoomToSelectedQuery===false) {
+          query.treeZoom=undefined;
+        }
+      }
       break;
     }
     case types.MAP_ANIMATION_PLAY_PAUSE_BUTTON:

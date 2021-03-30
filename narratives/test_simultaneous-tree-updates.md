@@ -19,6 +19,10 @@ Check that both the branches and tips update.
 # [P3: Zoom into clade A1b _and_ change color](http://localhost:4000/flu/seasonal/h3n2/ha/3y?d=tree&label=clade:A1b)
 Check that the coloring of the branches and tips update as we zoom in.
 
+# [P3b: Zoom in slightly more via "zoom to selected"](http://localhost:4000/flu/seasonal/h3n2/ha/3y?d=tree&f_clade_membership=A1b/186D,A1b/197R,A1b/94N&treeZoom=selected)
+
+We're now recreating the functionality of filtering to clades A1b/186D, A1b/197R and A1b/94N then clicking "zoom to selected"
+
 # [P4: Lots of simultaneous changes](http://localhost:4000/flu/seasonal/h3n2/ha/3y?c=lbi&d=tree&dmin=2017-01-01&f_region=North%20America&label=clade:3c2.A&m=div)
 * Zoomed out to near the root (clade 3c2.A)
 * Changed the horizontal scale to divergence
