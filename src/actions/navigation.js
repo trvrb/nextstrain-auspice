@@ -27,17 +27,26 @@ export const chooseDisplayComponentFromURL = (url) => {
 
 /*
  * All the Fetch Promises are created before first render. When trying the cache we `await`.
- * If the Fetch is not finished, this will wait for it to end. Subsequent awaits will immeditaly return the result.
+ * If the Fetch is not finished, this will wait for it to end. Subsequent awaits will immediately return the result.
  * For the landing dataset, no problem either because await on a value just returns the value.
  */
 const tryCacheThenFetch = async (mainTreeName, secondTreeName, state) => {
-  if (state.jsonCache && state.jsonCache.jsons && state.jsonCache.jsons[mainTreeName] !== undefined) {
-    return {
-      json: await state.jsonCache.jsons[mainTreeName],
-      secondJson: await state.jsonCache.jsons[secondTreeName]
-    };
+  console.log("tryCacheThenFetch", mainTreeName, mainTreeName);
+
+  if (!state.jsonCache || !state.jsonCache.jsons) {
+    throw new Error("Cache not present");
   }
-  throw new Error("This should not happen given that we start fetching all datasets before rendering");
+  console.log(state, cache)
+  const cache = state.jsonCache.jsons;
+  if (!cache[mainTreeName] || !cache[mainTreeName].main) {
+    throw new Error(`${mainTreeName} not in cache.`);
+  }
+  const mainJson = await cache[mainTreeName].main;
+  const secondJson = cache[secondTreeName] ? await cache[secondTreeName].main : undefined;
+  return {json: mainJson, secondJson};
+
+  // todo: sidecar files. These are in cache. Turn `tryCacheThenFetch`
+  // into an async generator?
 };
 
 /* changes the state of the page and (perhaps) the dataset displayed.

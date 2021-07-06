@@ -11,6 +11,7 @@ import { parseMarkdownNarrativeFile } from "../util/parseNarrative";
 import { NoContentError } from "../util/exceptions";
 import { parseMarkdown } from "../util/parseMarkdown";
 import { updateColorByWithRootSequenceData } from "../actions/colors";
+import { exception } from "react-ga";
 
 /**
  * Sends a GET request to the `/charon` web API endpoint requesting data.
@@ -74,157 +75,11 @@ export const collectDatasetFetchUrls = (url) => {
     url = parts[0]; // eslint-disable-line no-param-reassign
     secondTreeUrl = parts[1];
   }
+  if (url.startsWith('/')) url = url.slice(1); // eslint-disable-line no-param-reassign
+  if (secondTreeUrl && secondTreeUrl.startsWith('/')) {
+    secondTreeUrl = secondTreeUrl.slice(1); // eslint-disable-line no-param-reassign
+  }
   return [url, secondTreeUrl];
-};
-
-/**
- * This is for processing a second tree using the deprecated
- * syntax of declaring second trees, e.g. `flu/seasonal/h3n2/ha:na/2y`
- * We are keeping this to allow backwards compatibility.
- *
- * given a url to fetch, check if a second tree is defined.
- * e.g. `ha:na`. If so, then we want to make two fetches,
- * one for `ha` and one for `na`.
- *
- * @returns {Array} [0] {string} url, modified as needed to represent main tree
- *                  [1] {string | undefined} secondTreeUrl
- *                  [2] {string | undefined} string of old syntax
- */
-const collectDatasetFetchUrlsDeprecatedSyntax = (url) => {
-  let secondTreeUrl;
-  let treeName;
-  let secondTreeName;
-  const parts = url.replace(/^\//, '')
-    .replace(/\/$/, '')
-    .split("/");
-  for (let i = 0; i < parts.length; i++) {
-    if (parts[i].indexOf(":") !== -1) {
-      [treeName, secondTreeName] = parts[i].split(":");
-      parts[i] = treeName;
-      // this is the first tree URL
-      url = parts.join("/"); // eslint-disable-line no-param-reassign
-      parts[i] = secondTreeName;
-      secondTreeUrl = parts.join("/"); // this is the second tree URL
-      break;
-    }
-  }
-  return [url, secondTreeUrl, treeName.concat(":", secondTreeName)];
-};
-
-const fetchDataAndDispatch = async (dispatch, url, query, narrativeBlocks) => {
-  /* Once upon a time one could specify a second tree via a `?tt=tree_name`.
-  This is no longer supported, however we still display an error message. */
-  if (query.tt) {
-    dispatch(errorNotification({
-      message: `Specifing a second tree via '?tt=${query.tt}' is no longer supported.`,
-      details: "The new syntax requires the complete name for both trees. " +
-        "For example, instead of 'flu/seasonal/h3n2/ha/2y?tt=na' you must " +
-        "specify 'flu/seasonal/h3n2/ha/2y:flu/seasonal/h3n2/na/2y' "
-    }));
-  }
-  let pathnameShouldBe = url; /* the pathname to display in the URL */
-  let [mainDatasetUrl, secondTreeUrl] = collectDatasetFetchUrls(url);
-  /* fetch the dataset JSON + the dataset JSON of a second tree if applicable */
-  let datasetJson;
-  let secondTreeDataset = false;
-  try {
-    if (!secondTreeUrl) {
-      const mainDatasetResponse = await getDataset(mainDatasetUrl);
-      datasetJson = await mainDatasetResponse.json();
-      pathnameShouldBe = queryString.parse(mainDatasetResponse.url.split("?")[1]).prefix;
-    } else {
-      try {
-        /* TO DO -- we used to fetch both trees at once, and the server would provide
-         * the following info accordingly. This required `recomputeReduxState` to be
-         * overly complicated. Since we have 2 fetches, could we simplify things
-         * and make `recomputeReduxState` for the first tree followed by another
-         * state recomputation? */
-        const mainDatasetResponse = await getDataset(mainDatasetUrl);
-        datasetJson = await mainDatasetResponse.json();
-        secondTreeDataset = await getDataset(secondTreeUrl)
-          .then((res) => res.json());
-      } catch (e) {
-        /* If the url is in the old syntax (e.g. `ha:na`) then `collectDatasetFetchUrls`
-         * will return incorrect dataset URLs (perhaps for both trees)
-         * In this case, we will try to parse the url again according to the old syntax
-         * and try to get the dataset for the main tree and second tree again.
-         * Also displays warning to the user to let them know the old syntax is deprecated. */
-        let oldSyntax;
-        [mainDatasetUrl, secondTreeUrl, oldSyntax] = collectDatasetFetchUrlsDeprecatedSyntax(url);
-        pathnameShouldBe = `${mainDatasetUrl}:${secondTreeUrl}`;
-        const mainDatasetResponse = await getDataset(mainDatasetUrl);
-        datasetJson = await mainDatasetResponse.json();
-        secondTreeDataset = await getDataset(secondTreeUrl)
-          .then((res) => res.json());
-        dispatch(warningNotification({
-          message: `Specifing a second tree via "${oldSyntax}" is deprecated.`,
-          details: "The url has been modified to reflect the new syntax."
-        }));
-      }
-    }
-
-    dispatch({
-      type: types.CLEAN_START,
-      pathnameShouldBe,
-      ...createStateFromQueryOrJSONs({
-        json: datasetJson,
-        secondTreeDataset,
-        query,
-        narrativeBlocks,
-        mainTreeName: secondTreeUrl ? mainDatasetUrl : null,
-        secondTreeName: secondTreeUrl ? secondTreeUrl : null,
-        dispatch
-      })
-    });
-
-  } catch (err) {
-    /* No Content (204) errors are special cases where there is no dataset, but the URL is valid */
-    if (err instanceof NoContentError) {
-      /* TODO: add more helper functions for moving between pages in auspice */
-      return dispatch({
-        type: types.PAGE_CHANGE,
-        displayComponent: "splash",
-        pushState: true
-      });
-    }
-    console.error(err, err.message);
-    dispatch(goTo404(`Couldn't load JSONs for ${url}`));
-    return undefined;
-  }
-
-  /* do we have frequencies to display? */
-  if (datasetJson.meta.panels && datasetJson.meta.panels.indexOf("frequencies") !== -1) {
-    try {
-      const frequencyData = await getDataset(mainDatasetUrl, {type: "tip-frequencies"})
-        .then((res) => res.json());
-      dispatch(loadFrequencies(frequencyData));
-    } catch (err) {
-      console.error("Failed to fetch frequencies", err.message);
-      dispatch(warningNotification({message: "Failed to fetch frequencies"}));
-    }
-  }
-
-  /* Get available datasets -- this is needed for the sidebar dataset-change dropdowns etc */
-  try {
-    const availableDatasets = await fetchJSON(`${getServerAddress()}/getAvailable?prefix=${window.location.pathname}`);
-    dispatch({type: types.SET_AVAILABLE, data: availableDatasets});
-  } catch (err) {
-    console.error("Failed to fetch available datasets", err.message);
-    dispatch(warningNotification({message: "Failed to fetch available datasets"}));
-  }
-
-  /* Attempt to fetch the root-sequence JSON, which may or may not exist */
-  try {
-    const rootSequenceData = await getDataset(mainDatasetUrl, {type: "root-sequence"})
-      .then((res) => res.json());
-    dispatch({type: types.SET_ROOT_SEQUENCE, data: rootSequenceData});
-    dispatch(updateColorByWithRootSequenceData());
-  } catch (err) {
-    // We don't log anything as it's not unexpected to be missing the root-sequence JSON
-    // console.log("Failed to get the root-sequence JSON", err.message);
-  }
-
-  return undefined;
 };
 
 export const loadSecondTree = (secondTreeUrl, firstTreeUrl) => async (dispatch, getState) => {
@@ -242,16 +97,96 @@ export const loadSecondTree = (secondTreeUrl, firstTreeUrl) => async (dispatch, 
   dispatch({type: types.TREE_TOO_DATA, ...newState});
 };
 
-function addEndOfNarrativeBlock(narrativeBlocks) {
-  const lastContentSlide = narrativeBlocks[narrativeBlocks.length-1];
-  const endOfNarrativeSlide = Object.assign({}, lastContentSlide, {
-    __html: undefined,
-    isEndOfNarrativeSlide: true
-  });
-  narrativeBlocks.push(endOfNarrativeSlide);
+export const loadJSONs = ({url = window.location.pathname, search = window.location.search} = {}) => {
+  return (dispatch, getState) => {
+    const { tree } = getState();
+    if (tree.loaded) {
+      dispatch({type: types.DATA_INVALID}); // "resets" state
+    }
+    const query = queryString.parse(search);
+
+    if (url.indexOf("narratives") === -1) {
+      loadDatasetVisualisation(dispatch, url, query);
+    } else {
+      loadNarrative(dispatch, url, query);
+    }
+  };
+};
+
+
+/* ------------------------------------------------------------------------------------ */
+
+
+/**
+ * Trigger one or more dispatches
+ * intended to display a (non-narrative) visualisation.
+ * The dispatches may be to a 404 / splash page if the
+ * (main) dataset request fails.
+ */
+async function loadDatasetVisualisation(dispatch, url, query) {
+
+  /* step 1: parse URL into api requests to make */
+  warnDeprecatedQuerySyntax(dispatch, query);
+  const [mainDatasetUrl, secondTreeUrl] = collectDatasetFetchUrls(url);
+  const apiCalls = parseUrlIntoAPICalls(mainDatasetUrl);
+  if (secondTreeUrl) {
+    apiCalls.second = parseUrlIntoAPICalls(secondTreeUrl).main;
+  }
+
+  /* step 2: fetch main JSON (or mainJSONs if 2 trees) */
+  let mainJson, secondJson, pathnameShouldBe, additionalRequests;
+  try {
+    ({mainJson, secondJson, pathnameShouldBe, additionalRequests} =
+      await fetchDatasetPair(apiCalls.main, apiCalls.second));
+  } catch (err) {
+    handleFetchErrors(err, dispatch, `Couldn't load JSONs for ${url}`);
+    return;
+  }
+
+  /* step 3: dispatch (viz should render) */
+  dispatchCleanStart(dispatch, mainJson, secondJson, pathnameShouldBe, query);
+
+  /* step 4: trigger promises to fetch sidecar files. These may resolve in dispatches to
+  update the visualisation or to show a notification */
+  if (additionalRequests.tipFrequencies) {
+    fetchJSON(apiCalls.tipFrequencies)
+      .then((data) => dispatch(loadFrequencies(data)))
+      .catch((err) => {
+        console.error("Failed to fetch frequencies", err.message);
+        dispatch(warningNotification({message: "Failed to fetch frequencies"}));
+      });
+  }
+  if (additionalRequests.rootSequence) {
+    fetchJSON(apiCalls.rootSequence)
+      .then((data) => dispatch({type: types.SET_ROOT_SEQUENCE, data}))
+      .catch(() => {}); // it's not unexpected to be missing the root-sequence JSON
+  }
+  if (additionalRequests.available) {
+    fetchJSON(`${getServerAddress()}/getAvailable?prefix=${window.location.pathname}`)
+      .then((data) => dispatch({type: types.SET_AVAILABLE, data}))
+      .catch((err) => {
+        console.error("Failed to fetch available datasets", err.message);
+        dispatch(warningNotification({message: "Failed to fetch available datasets"}));
+      });
+  }
+};
+
+
+function warnDeprecatedQuerySyntax(dispatch, query) {
+  /* Once upon a time one could specify a second tree via a `?tt=tree_name`.
+  This is no longer supported, however we still display an error message. */
+  if (query.tt) {
+    dispatch(errorNotification({
+      message: `Specifing a second tree via '?tt=${query.tt}' is no longer supported.`,
+      details: "The new syntax requires the complete name for both trees. " +
+        "For example, instead of 'flu/seasonal/h3n2/ha/2y?tt=na' you must " +
+        "specify 'flu/seasonal/h3n2/ha/2y:flu/seasonal/h3n2/na/2y' "
+    }));
+  }
 }
 
-const narrativeFetchingErrorNotification = (err, failedTreeName, fallbackTreeName) => {
+
+function narrativeFetchingErrorNotification(err, failedTreeName, fallbackTreeName) {
   return errorNotification({
     message: `Error fetching one of the datasets.
       Using the YAML-defined dataset (${fallbackTreeName}) instead.`,
@@ -263,104 +198,225 @@ const narrativeFetchingErrorNotification = (err, failedTreeName, fallbackTreeNam
   });
 };
 
-const fetchAndCacheNarrativeDatasets = async (dispatch, blocks, query) => {
-  const jsons = {};
-  const startingBlockIdx = getNarrativePageFromQuery(query, blocks);
-  const startingDataset = blocks[startingBlockIdx].dataset;
-  const startingTreeName = collectDatasetFetchUrls(startingDataset)[0];
-  const landingSlide = {
-    mainTreeName: startingTreeName,
-    secondTreeDataset: false,
-    secondTreeName: false
+/**
+ * Produce API calls which should fetch the main dataset, as well as
+ * calls to fetch the sidecar files (which may not exist) */
+function parseUrlIntoAPICalls(url) {
+  // todo - handle hardcoded server calls
+  const main = `${getServerAddress()}/getDataset?prefix=${url}`;
+  return {
+    name: url,
+    main,
+    tipFrequencies: `${main}&type=tip-frequencies`,
+    rootSequence: `${main}&type=root-sequence`
   };
-  const treeNames = blocks.map((block) => collectDatasetFetchUrls(block.dataset)[0]);
+}
 
-  // TODO:1050
-  // 1. allow frequencies to be loaded for a narrative dataset here
-  // 2. allow loading dataset for secondTreeName
+/**
+ * Given one or two datasets intended for display, fetch them and return
+ * the data. This function should be `await`ed.
+ * @param {String} main API call for main dataset
+ * @param {String} second [optional] API call for second dataset
+ * @returns {Object} Object including parsed JSON representation of dataset(s)
+ */
+async function fetchDatasetPair(main, second) {
+  const mainDatasetResponse = await fetchWithErrorHandling(main);
+  const pathnameShouldBe = queryString.parse(mainDatasetResponse.url.split("?")[1]).prefix;
+  const mainJson = await mainDatasetResponse.json();
+  let secondJson;
+  try {
+    secondJson = second ? await fetchJSON(second) : false;
+  } catch (err) {
+    console.error("Failed to fetch second tree via API call", second);
+    second = false; // eslint-disable-line no-param-reassign
+  }
+  return {
+    mainJson,
+    secondJson,
+    pathnameShouldBe,
+    additionalRequests: {
+      tipFrequencies: mainJson && mainJson.meta.panels && mainJson.meta.panels.includes("frequencies"),
+      rootSequence: !!mainJson,
+      available: !!mainJson
+    }
+  };
+}
 
-  // We block and await for the landing dataset
-  jsons[startingTreeName] = await
-  getDataset(startingTreeName)
-      .then((res) => res.json())
-      .catch((err) => {
-        if (startingTreeName !== treeNames[0]) {
-          dispatch(narrativeFetchingErrorNotification(err, startingTreeName, treeNames[0]));
-          // Assuming block[0] is the one that was set properly for all legacy narratives
-          return getDataset(treeNames[0])
-            .then((res) => res.json());
-        }
-        throw err;
-      });
-  landingSlide.json = jsons[startingTreeName];
-  // Dispatch landing dataset
+
+/**
+ * Dispatch the action which will result in Auspice displaying the dataset(s).
+ */
+function dispatchCleanStart(dispatch, mainJson, secondJson, pathnameShouldBe, query, narrativeBlocks) {
   dispatch({
-    type: types.CLEAN_START,
-    pathnameShouldBe: startingDataset,
+    type: types.CLEAN_START, // check this is the only CLEAN_START here
+    pathnameShouldBe,
     ...createStateFromQueryOrJSONs({
-      ...landingSlide,
+      json: mainJson,
+      secondTreeDataset: secondJson,
       query,
-      narrativeBlocks: blocks,
+      narrativeBlocks,
+      mainTreeName: secondJson ? pathnameShouldBe : null,
+      secondTreeName: secondJson ? "TO DO!" : null, // todo
       dispatch
     })
   });
+}
 
-  // The other datasets are fetched asynchronously
-  for (const treeName of treeNames) {
-  // With this there's no need for Set above
-    jsons[treeName] = jsons[treeName] ||
-      getDataset(treeName)
-        .then((res) => res.json())
+async function loadNarrative(dispatch, url, query) {
+  const datasetCache = {};
+
+  /* step 1: parse the narrative file itself */
+  let blocks;
+  try {
+    blocks = await fetchAndParseNarrative(url);
+  } catch (err) {
+    console.error("Error obtaining narratives", err.message);
+    return dispatch(goTo404(`Couldn't load narrative for ${url}`));
+  }
+
+  /* step 2: extract all API calls to fetch datasets defined in the narrative */
+  const {datasetApiCalls, initialDatasetNames, frontmatterDatasetNames} =
+    createApiCallsForDatasetsInNarratives(blocks, query);
+
+  /* step 3: make blocking requests for our starting dataset(s) & dispatch */
+  let mainJson, secondJson, pathnameShouldBe, additionalRequests, startingDatasetUrls;
+  try {
+    ({mainJson, secondJson, pathnameShouldBe, additionalRequests} =
+      await fetchDatasetPair(...initialDatasetNames.map((x) => datasetApiCalls[x] ? datasetApiCalls[x].main : undefined)));
+    startingDatasetUrls = initialDatasetNames;
+  } catch (err) {
+    // if the initial dataset call fails, we try the frontmatter one.
+    try {
+      throw new Error("TODO ERROR")
+      // ({mainJson, secondJson, pathnameShouldBe, additionalRequests} =
+      //   await fetchDatasetPair(...frontmatterDatasetUrls.map((x) => datasetApiCalls[x] ? datasetApiCalls[x].main : undefined)));
+      // // dispatch(narrativeFetchingErrorNotification(err, treeName, treeNames[0]));
+      // // todo - store in cache
+      // dispatch(narrativeFetchingErrorNotification(err, "A", "B"));
+    } catch (fatalError) {
+      handleFetchErrors(fatalError, dispatch, `Couldn't load JSONs for this narrative`);
+      return;
+    }
+  }
+
+  dispatchCleanStart(dispatch, mainJson, secondJson, pathnameShouldBe, query, blocks);
+  datasetCache[startingDatasetUrls[0]] = {main: mainJson};
+  if (secondJson) datasetCache[startingDatasetUrls[1]] = {main: secondJson};
+
+  /* step 4: make additional requests, and dispatch them */
+  if (additionalRequests.tipFrequencies) {
+    datasetCache[startingDatasetUrls[0]].tipFrequencies =
+      fetchJSON(datasetApiCalls[startingDatasetUrls[0]].tipFrequencies)
+        .then((data) => dispatch(loadFrequencies(data)))
         .catch((err) => {
-          dispatch(narrativeFetchingErrorNotification(err, treeName, treeNames[0]));
-          // We fall back to the first (YAML frontmatter) slide's dataset
-          return jsons[treeNames[0]];
+          console.error("Failed to fetch frequencies", err.message);
+          dispatch(warningNotification({message: "Failed to fetch frequencies"}));
         });
   }
-  // Dispatch jsons object containing promises corresponding to each fetch to be stored in redux cache.
-  // They are potentially unresolved. We await them upon retreieving from the cache - see actions/navigation.js.
-  dispatch({
-    type: types.CACHE_JSONS,
-    jsons
+  if (additionalRequests.rootSequence) {
+    datasetCache[startingDatasetUrls[0]].rootSequence =
+      fetchJSON(datasetApiCalls[startingDatasetUrls[0]].rootSequence)
+        .then((data) => dispatch({type: types.SET_ROOT_SEQUENCE, data}))
+        .catch(() => {}); // it's not unexpected to be missing the root-sequence JSON
+  }
+  // if (additionalRequests.available) {
+  //   fetchJSON(`${getServerAddress()}/getAvailable?prefix=${window.location.pathname}`)
+  //     .then((data) => dispatch({type: types.SET_AVAILABLE, data}))
+  //     .catch((err) => {
+  //       console.error("Failed to fetch available datasets", err.message);
+  //       dispatch(warningNotification({message: "Failed to fetch available datasets"}));
+  //     });
+  // }
+
+  /* step 5: fill in cache with pending promises */
+
+  Object.entries(datasetApiCalls).forEach(([name, apis]) => {
+    // todo - ensure we don't make duplicate requests...
+    datasetCache[name] = {
+      main: fetchJSON(apis.main).catch(() => {}),
+      tipFrequencies: fetchJSON(apis.tipFrequencies).catch(() => {}),
+      rootJson: fetchJSON(apis.rootJson).catch(() => {})
+    };
   });
-};
 
+  console.log("datasetCache", datasetCache)
 
-export const loadJSONs = ({url = window.location.pathname, search = window.location.search} = {}) => {
-  return (dispatch, getState) => {
-    const { tree } = getState();
-    if (tree.loaded) {
-      dispatch({type: types.DATA_INVALID});
-    }
-    const query = queryString.parse(search);
+  dispatch({type: types.CACHE_JSONS, jsons: datasetCache});
 
-    if (url.indexOf("narratives") === -1) {
-      fetchDataAndDispatch(dispatch, url, query);
-    } else {
-      /* we want to have an additional fetch to get the narrative JSON, which in turn
-      tells us which data JSON to fetch.
-      Note that up until v2.16 the client expected the narrative to have been converted
+}
+
+function handleFetchErrors(err, dispatch, msg) {
+  /* No Content (204) errors are special cases where there is no dataset, but the URL is valid */
+  if (err instanceof NoContentError) {
+    /* TODO: add more helper functions for moving between pages in auspice */
+    dispatch({
+      type: types.PAGE_CHANGE,
+      displayComponent: "splash",
+      pushState: true
+    });
+  } else {
+    console.error(err, err.message);
+    dispatch(goTo404(msg));
+  }
+}
+
+/**
+ * @returns {Promise}
+ */
+function fetchAndParseNarrative(url) {
+  const apiCall = `${getServerAddress()}/getNarrative?prefix=${url}&type=md`;
+  return fetchWithErrorHandling(apiCall)
+    .then((res) => res.text())
+    .then((res) => parseMarkdownNarrativeFile(res, parseMarkdown))
+    .catch((err) => {
+      /* Note that up until v2.16 the client expected the narrative to have been converted
       to JSON by the server. To facilitate backward compatibility (e.g. in the case where
       the client is >2.16, but the server is using an older version of the API)
-      if the file doesn't look like markdown we will attempt to parse it as JSON */
-      getDatasetFromCharon(url, {narrative: true, type: "md"})
-        .then((res) => res.text())
-        .then((res) => parseMarkdownNarrativeFile(res, parseMarkdown))
-        .catch((err) => {
-          // errors from `parseMarkdownNarrativeFile` indicating that the file doesn't look
-          // like markdown will have the fileContents attached to them
-          if (!err.fileContents) throw err;
-          console.error("Narrative file doesn't appear to be markdown! Attempting to parse as JSON.");
-          return JSON.parse(err.fileContents);
-        })
-        .then((blocks) => {
-          addEndOfNarrativeBlock(blocks);
-          return fetchAndCacheNarrativeDatasets(dispatch, blocks, query);
-        })
-        .catch((err) => {
-          console.error("Error obtaining narratives", err.message);
-          dispatch(goTo404(`Couldn't load narrative for ${url}`));
-        });
+      if the file doesn't look like markdown we will attempt to parse it as JSON.
+      Errors from `parseMarkdownNarrativeFile` indicating that the file doesn't look
+      like markdown will have the fileContents attached to them */
+      if (!err.fileContents) throw err;
+      console.error("Narrative file doesn't appear to be markdown! Attempting to parse as JSON.");
+      return JSON.parse(err.fileContents);
+    })
+    .then((blocks) => {
+      addEndOfNarrativeBlock(blocks);
+      return blocks;
+    });
+}
+
+
+function addEndOfNarrativeBlock(narrativeBlocks) {
+  const lastContentSlide = narrativeBlocks[narrativeBlocks.length-1];
+  const endOfNarrativeSlide = Object.assign({}, lastContentSlide, {
+    __html: undefined,
+    isEndOfNarrativeSlide: true
+  });
+  narrativeBlocks.push(endOfNarrativeSlide);
+}
+
+/**
+ * A narrative (parsed into `blocks`) may define multiple datasets.
+ * This function returns the API endpoints needed to request these
+ * datasets (including sidecar files).
+ * Note: "initial": starting page, potentially different to frontmatter
+ */
+function createApiCallsForDatasetsInNarratives(blocks, query) {
+  let initialDatasetNames, frontmatterDatasetNames;
+  const datasetApiCalls = {};
+  const initialBlockIdx = getNarrativePageFromQuery(query, blocks);
+  collectDatasetFetchUrls(blocks[initialBlockIdx].dataset);
+  blocks.forEach((block, idx) => {
+    const [main, second] = collectDatasetFetchUrls(block.dataset);
+    if (!datasetApiCalls[main]) {
+      datasetApiCalls[main] = parseUrlIntoAPICalls(main);
     }
-  };
-};
+    if (second && !datasetApiCalls[second]) {
+      datasetApiCalls[second] = parseUrlIntoAPICalls(second);
+    }
+    if (idx===0) {frontmatterDatasetNames = [main, second];}
+    if (idx===initialBlockIdx) {initialDatasetNames = [main, second];}
+  });
+  console.log("datasetApiCalls", datasetApiCalls);
+  return {datasetApiCalls, initialDatasetNames, frontmatterDatasetNames};
+}
