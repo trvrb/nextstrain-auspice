@@ -143,7 +143,7 @@ const getInView = (tree) => {
  * - controls.filters (redux) is a dict of trait name -> values
  * - filters (in this code) is a list of filters to apply
  *   e.g. [{trait: "country", values: [...]}, ...] */
-const getFilteredAndIdxOfFilteredRoot = (tree, controls, inView) => {
+export const getFilteredAndIdxOfFilteredRoot = (tree, controls, inView) => {
   if (!tree.nodes) {
     console.error("getFiltered() ran without tree.nodes");
     return null;

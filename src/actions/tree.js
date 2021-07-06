@@ -111,6 +111,15 @@ export const updateVisibleTipsAndBranchThicknesses = (
       visibilityToo: dispatchObj.visibilityToo
     });
 
+    /* We set a flag for the URL middleware here */
+    if (root[0]!== undefined) {
+      if (tree.idxOfFilteredRoot===root[0]) {
+        dispatchObj.zoomToSelectedQuery = true;
+      } else {
+        dispatchObj.zoomToSelectedQuery = false;
+      }
+    }
+
     /* D I S P A T C H */
     dispatch(dispatchObj);
     updateEntropyVisibility(dispatch, getState);

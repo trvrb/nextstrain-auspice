@@ -3,7 +3,7 @@ import { cloneDeep } from 'lodash';
 import { numericToCalendar, calendarToNumeric } from "../util/dateHelpers";
 import { reallySmallNumber, twoColumnBreakpoint, defaultColorBy, defaultGeoResolution, defaultDateRange, nucleotide_gene, strainSymbol, genotypeSymbol } from "../util/globals";
 import { calcBrowserDimensionsInitialState } from "../reducers/browserDimensions";
-import { getIdxMatchingLabel, calculateVisiblityAndBranchThickness } from "../util/treeVisibilityHelpers";
+import { getIdxMatchingLabel, calculateVisiblityAndBranchThickness, getFilteredAndIdxOfFilteredRoot } from "../util/treeVisibilityHelpers";
 import { constructVisibleTipLookupBetweenTrees } from "../util/treeTangleHelpers";
 import { getDefaultControlsState, shouldDisplayTemporalConfidence } from "../reducers/controls";
 import { countTraitsAcrossTree, calcTotalTipsInTree } from "../util/treeCountingHelpers";
@@ -587,15 +587,23 @@ const checkAndCorrectErrorsInState = (state, metadata, query, tree, viewingNarra
   return state;
 };
 
-const modifyTreeStateVisAndBranchThickness = (oldState, zoomSelected, controlsState, dispatch) => {
+const modifyTreeStateVisAndBranchThickness = (oldState, query, controlsState, dispatch) => {
   /* calculate new branch thicknesses & visibility */
   let newIdxRoot = oldState.idxOfInViewRootNode;
-  if (zoomSelected) {
+
+  if (typeof query.label==="string") {
     // Check and fix old format 'clade=B' - in this case selectionClade is just 'B'
-    const [labelName, labelValue] = zoomSelected.split(":");
+    const [labelName, labelValue] = query.label.split(":");
     const cladeSelectedIdx = getIdxMatchingLabel(oldState.nodes, labelName, labelValue, dispatch);
-    oldState.selectedClade = zoomSelected;
+    oldState.selectedClade = query.label;
     newIdxRoot = applyInViewNodesToTree(cladeSelectedIdx, oldState);
+    delete query.treeZoom;
+  } else if (query.treeZoom==="selected") {
+    // zoom to selected requires filters to be applied to tree to calculate the appropriate root
+    // Note that these are re-calculated by `calculateVisiblityAndBranchThickness`
+    const {idxOfFilteredRoot} = getFilteredAndIdxOfFilteredRoot(oldState, controlsState, oldState.nodes.map(() => true));
+    newIdxRoot = applyInViewNodesToTree(idxOfFilteredRoot, oldState);
+    if (!idxOfFilteredRoot) delete query.treeZoom;
   } else {
     oldState.selectedClade = undefined;
     newIdxRoot = applyInViewNodesToTree(0, oldState);
@@ -831,12 +839,12 @@ export const createStateFromQueryOrJSONs = ({
   }
 
   /* if query.label is undefined then we intend to zoom to the root */
-  tree = modifyTreeStateVisAndBranchThickness(tree, query.label, controls, dispatch);
+  tree = modifyTreeStateVisAndBranchThickness(tree, query, controls, dispatch);
 
   if (treeToo && treeToo.loaded) {
     treeToo.nodeColorsVersion = tree.nodeColorsVersion;
     treeToo.nodeColors = calcNodeColor(treeToo, controls.colorScale);
-    treeToo = modifyTreeStateVisAndBranchThickness(treeToo, undefined, controls, dispatch);
+    treeToo = modifyTreeStateVisAndBranchThickness(treeToo, {}, controls, dispatch);
     controls = modifyControlsViaTreeToo(controls, treeToo.name);
     treeToo.tangleTipLookup = constructVisibleTipLookupBetweenTrees(tree.nodes, treeToo.nodes, tree.visibility, treeToo.visibility);
   }
@@ -912,7 +920,7 @@ export const createTreeTooState = ({
   treeToo.debug = "RIGHT";
   controls = modifyControlsStateViaTree(controls, tree, treeToo, oldState.metadata.colorings);
   controls = modifyControlsViaTreeToo(controls, secondTreeUrl);
-  treeToo = modifyTreeStateVisAndBranchThickness(treeToo, undefined, controls, dispatch);
+  treeToo = modifyTreeStateVisAndBranchThickness(treeToo, {}, controls, dispatch);
 
   /* calculate colours if loading from JSONs or if the query demands change */
   const colorScale = calcColorScale(controls.colorBy, controls, tree, treeToo, oldState.metadata);
