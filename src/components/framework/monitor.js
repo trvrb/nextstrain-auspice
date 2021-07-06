@@ -14,6 +14,11 @@ import { twoColumnBreakpoint, controlsHiddenWidth} from "../../util/globals";
 class Monitor extends React.Component {
   constructor(props) {
     super(props);
+    this.throttleHandleByResize =
+      _throttle(this.handleResizeByDispatching.bind(this), 500, {
+        leading: true,
+        trailing: true
+      });
   }
   static propTypes = {
     dispatch: PropTypes.func.isRequired
@@ -24,10 +29,7 @@ class Monitor extends React.Component {
       "resize",
       /* lodash throttle invokes resize event at most twice per second
       to let redraws catch up. Could also use debounce for 'wait until resize stops' */
-      _throttle(this.handleResizeByDispatching.bind(this), 500, {
-        leading: true,
-        trailing: true
-      })
+      this.throttleHandleByResize
     );
 
     /* Note that just calling history.pushState() or history.replaceState() won't trigger a popstate event.
@@ -35,6 +37,11 @@ class Monitor extends React.Component {
     (or calling history.back() or history.forward() in JavaScript). */
     window.addEventListener('popstate', this.onURLChanged);
     // this.onURLChanged();
+  }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.throttleHandleByResize);  // need to actually remove the _throttle
+    this.throttleHandleByResize.cancel;
+    window.removeEventListener('popstate', this.onURLChanged);
   }
 
   onURLChanged = () => this.props.dispatch(changePage());
