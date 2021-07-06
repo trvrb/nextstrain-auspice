@@ -265,6 +265,11 @@ export const infoPanelStyles = {
     minWidth: 130,
     verticalAlign: "top"
   },
+  link: {
+    color: "#5097BA",
+    cursor: "pointer",
+    fontWeight: 400
+  },
   break: {
     marginBottom: "10px"
   }

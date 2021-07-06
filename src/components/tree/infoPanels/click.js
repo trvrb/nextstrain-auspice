@@ -4,6 +4,7 @@ import { infoPanelStyles } from "../../../globalStyles";
 import { numericToCalendar } from "../../../util/dateHelpers";
 import { getTraitFromNode, getFullAuthorInfoFromNode, getVaccineFromNode,
   getAccessionFromNode, getUrlFromNode, collectMutations } from "../../../util/treeMiscHelpers";
+import { changePage } from "../../../actions/navigation";
 
 export const styles = {
   container: {
@@ -31,11 +32,13 @@ export const stopProp = (e) => {
 };
 
 /* min width to get "collection date" on 1 line: 120 */
-const item = (key, value, href) => (
+const item = (key, value, href, onClick) => (
   <tr key={key}>
     <th style={infoPanelStyles.item}>{key}</th>
     <td style={infoPanelStyles.item}>{href ? (
       <a href={href} target="_blank" rel="noopener noreferrer">{value}</a>
+    ) : onClick ? (
+      <span style={infoPanelStyles.link} onClick={onClick}>{value}</span>
     ) :
       value
     }</td>
@@ -212,7 +215,7 @@ const getTraitsToDisplay = (node) => {
   return Object.keys(node.node_attrs).filter((k) => !ignore.includes(k));
 };
 
-const Trait = ({node, trait, colorings}) => {
+const Trait = ({node, trait, colorings, dispatch}) => {
   const value_tmp = getTraitFromNode(node, trait);
   let value = value_tmp;
   if (typeof value_tmp === "number") {
@@ -225,6 +228,12 @@ const Trait = ({node, trait, colorings}) => {
   const name = (colorings && colorings[trait] && colorings[trait].title) ?
     colorings[trait].title :
     trait;
+
+  const changeDatasetAction = experimentalMakeChangeDatasetAction(node, trait, dispatch);
+  if (changeDatasetAction) {
+    return item(name, value, undefined, changeDatasetAction);
+  }
+
   const url = getUrlFromNode(node, trait);
   if (url) {
     return <Link title={name} url={url} value={value}/>;
@@ -239,7 +248,7 @@ const Trait = ({node, trait, colorings}) => {
  * @param  {function} props.goAwayCallback
  * @param  {object}   props.colorings
  */
-const TipClickedPanel = ({tip, goAwayCallback, colorings, t}) => {
+const TipClickedPanel = ({tip, goAwayCallback, colorings, t, dispatch}) => {
   if (!tip) {return null;}
   const panelStyle = { ...infoPanelStyles.panel};
   panelStyle.maxHeight = "70%";
@@ -255,7 +264,7 @@ const TipClickedPanel = ({tip, goAwayCallback, colorings, t}) => {
             <SampleDate node={node} t={t}/>
             <PublicationInfo node={node} t={t}/>
             {getTraitsToDisplay(node).map((trait) => (
-              <Trait node={node} trait={trait} colorings={colorings} key={trait}/>
+              <Trait node={node} trait={trait} colorings={colorings} key={trait} dispatch={dispatch}/>
             ))}
             <AccessionAndUrl node={node}/>
             {item("", "")}
@@ -271,3 +280,10 @@ const TipClickedPanel = ({tip, goAwayCallback, colorings, t}) => {
 };
 
 export default TipClickedPanel;
+
+function experimentalMakeChangeDatasetAction(node, trait, dispatch) {
+  if (!node.node_attrs || !node.node_attrs[trait] || !node.node_attrs[trait].dataset) return undefined;
+  const dataset = node.node_attrs[trait].dataset;
+  // todo: best-effort validation of `dataset`
+  return () => dispatch(changePage({path: dataset}));
+}

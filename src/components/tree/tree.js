@@ -169,6 +169,7 @@ class Tree extends React.Component {
           tip={this.state.selectedTip}
           colorings={this.props.metadata.colorings}
           t={t}
+          dispatch={this.props.dispatch}
         />
         {this.props.showTangle && this.state.tree && this.state.treeToo ? (
           <Tangle
