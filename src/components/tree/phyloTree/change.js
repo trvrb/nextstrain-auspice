@@ -36,8 +36,8 @@ const svgSetters = {
   attrs: {
     ".tip": {
       r: (d) => d.r,
-      cx: (d) => d.xTip,
-      cy: (d) => d.yTip
+      cx: (d) => Math.floor(d.xTip),
+      cy: (d) => Math.floor(d.yTip)
     },
     ".branch": {
     },

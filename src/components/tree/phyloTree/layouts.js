@@ -459,7 +459,7 @@ export const mapToScreen = function mapToScreen() {
   // assign the branches as path to each node for the different layouts
   if (this.layout==="unrooted") {
     this.nodes.forEach((d) => {
-      d.branch = [" M "+d.xBase.toString()+","+d.yBase.toString()+" L "+d.xTip.toString()+","+d.yTip.toString(), ""];
+      d.branch = [" M "+ Math.round(d.xBase).toString()+","+Math.round(d.yBase).toString()+" L "+Math.round(d.xTip).toString()+","+Math.round(d.yTip).toString(), ""];
     });
   } else if (this.layout==="clock" || this.layout==="scatter") {
     // if nodes are deliberately obscured (as traits may not be set for some nodes), we don't want to render branches joining that node
@@ -480,8 +480,8 @@ export const mapToScreen = function mapToScreen() {
       // So we add a tiny amount of jitter (e.g 1/1000px) to the horizontal line (d.branch[0])
       // see https://stackoverflow.com/questions/13223636/svg-gradient-for-perfectly-horizontal-path
       d.branch =[
-        [` M ${d.xBase - stem_offset},${d.yBase} L ${d.xTip},${d.yTip+0.01}`],
-        [` M ${d.xTip},${childrenY[0]} L ${d.xTip},${childrenY[1]}`]
+        [` M ${Math.round(d.xBase - stem_offset)},${Math.round(d.yBase)} L ${Math.round(d.xTip)},${Math.round(d.yTip+0.01)}`],
+        [` M ${Math.round(d.xTip)},${Math.round(childrenY[0])} L ${Math.round(d.xTip)},${Math.round(childrenY[1])}`]
       ];
       if (this.params.confidence) {
         d.confLine =` M ${this.xScale(d.conf[0])},${d.yBase} L ${this.xScale(d.conf[1])},${d.yTip}`;
@@ -494,14 +494,14 @@ export const mapToScreen = function mapToScreen() {
     this.nodes.forEach((d) => {d.cBarEnd = this.yScale(d.yRange[1]);});
     this.nodes.forEach((d, i) => {
       d.branch =[
-        " M "+(d.xBase-stem_offset_radial[i]*Math.sin(d.angle)).toString() +
-        " "+(d.yBase-stem_offset_radial[i]*Math.cos(d.angle)).toString() +
-        " L "+d.xTip.toString()+" "+d.yTip.toString(), ""
+        " M "+Math.round((d.xBase-stem_offset_radial[i]*Math.sin(d.angle))).toString() +
+        " "+Math.round((d.yBase-stem_offset_radial[i]*Math.cos(d.angle))).toString() +
+        " L "+Math.round(d.xTip.toString())+" "+Math.round(d.yTip.toString()), ""
       ];
       if (!d.terminal) {
-        d.branch[1] =[" M "+this.xScale(d.xCBarStart).toString()+" "+this.yScale(d.yCBarStart).toString()+
-        " A "+(this.xScale(d.depth)-this.xScale(offset)).toString()+" "+
-        (this.yScale(d.depth)-this.yScale(offset)).toString()+
+        d.branch[1] =[" M "+Math.round(this.xScale(d.xCBarStart)).toString()+" "+Math.round(this.yScale(d.yCBarStart)).toString()+
+        " A "+Math.round((this.xScale(d.depth)-this.xScale(offset))).toString()+" "+
+        Math.round((this.yScale(d.depth)-this.yScale(offset))).toString()+
         " 0 "+(d.smallBigArc?"1 ":"0 ") +" 1 "+
         " "+this.xScale(d.xCBarEnd).toString()+","+this.yScale(d.yCBarEnd).toString()];
       }

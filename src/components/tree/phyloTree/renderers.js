@@ -40,7 +40,7 @@ export const render = function render(svg, layout, distance, parameters, callbac
     d.tipStroke = tipStroke[i];
     d.fill = tipFill[i];
     d.visibility = visibility[i];
-    d["stroke-width"] = branchThickness[i];
+    d["stroke-width"] = Math.round(branchThickness[i]);
     d.r = tipRadii ? tipRadii[i] : this.params.tipRadius;
   });
 
@@ -98,6 +98,14 @@ export const drawTips = function drawTips() {
   timerStart("drawTips");
   const params = this.params;
 
+  // Reduce the precision of cx and cy attributes.
+  // The xTip and yTip are full precision Javascript floats
+  // but when stored in the DOM in decimal text format
+  // they bloat the DOM and decimal to hex takes longer.
+  // This only matters when the number of tips is in 4 figures.
+  // So, need to do a Math.floor()
+  // Please test this on a Macbook, Apple does tricks with resolution
+
   if (!("tips" in this.groups)) {
     this.groups.tips = this.svg.append("g").attr("id", "tips");
   }
@@ -108,17 +116,19 @@ export const drawTips = function drawTips() {
     .append("circle")
     .attr("class", "tip")
     .attr("id", (d) => getDomId("tip", d.n.name))
-    .attr("cx", (d) => d.xTip)
-    .attr("cy", (d) => d.yTip)
+    .attr("cx", (d) => Math.floor(d.xTip))
+    .attr("cy", (d) => Math.floor(d.yTip))
     .attr("r", (d) => d.r)
     .on("mouseover", this.callbacks.onTipHover)
     .on("mouseout", this.callbacks.onTipLeave)
     .on("click", this.callbacks.onTipClick)
-    .style("pointer-events", "auto")
-    .style("visibility", (d) => d.visibility === NODE_VISIBLE ? "visible" : "hidden")
+
+    /* .style("pointer-events", "auto") */
+    .style("visibility", (d) => d.visibility === NODE_VISIBLE ? "" : "hidden")
+
     .style("fill", (d) => d.fill || params.tipFill)
     .style("stroke", (d) => d.tipStroke || params.tipStroke)
-    .style("stroke-width", () => params.tipStrokeWidth) /* don't want branch thicknesses applied */
+    /* .style("stroke-width", () => params.tipStrokeWidth)  don't want branch thicknesses applied */
     .style("cursor", "pointer");
 
   timerEnd("drawTips");
@@ -141,7 +151,7 @@ export const getBranchVisibility = (d) => {
   ) {
     return "hidden";
   }
-  return "visible";
+  return "";   /* the css default is "visible" so just clear this setting */
 };
 
 /** Calculate the stroke for a given branch. May return a hex or a `url` referring to
@@ -187,9 +197,9 @@ export const drawBranches = function drawBranches() {
       .attr("id", (d) => getDomId("branchT", d.n.name))
       .attr("d", (d) => d.branch[1])
       .style("stroke", (d) => d.branchStroke || params.branchStroke)
-      .style("stroke-width", (d) => d['stroke-width'] || params.branchStrokeWidth)
+      .style("stroke-width", (d) => Math.round(d['stroke-width'] || params.branchStrokeWidth))
       .style("fill", "none")
-      .style("pointer-events", "auto")
+      /* .style("pointer-events", "auto") */
       .on("mouseover", this.callbacks.onBranchHover)
       .on("mouseout", this.callbacks.onBranchLeave)
       .on("click", this.callbacks.onBranchClick);
@@ -221,8 +231,8 @@ export const drawBranches = function drawBranches() {
       if (!d.branchStroke) return params.branchStroke;
       return strokeForBranch(d, "S");
     })
-    .style("stroke-linecap", "round")
-    .style("stroke-width", (d) => d['stroke-width'] || params.branchStrokeWidth)
+    /* .style("stroke-linecap", "round") */
+    .style("stroke-width", (d) => Math.round(d['stroke-width'] || params.branchStrokeWidth))
     .style("visibility", getBranchVisibility)
     .style("cursor", (d) => d.visibility === NODE_VISIBLE ? "pointer" : "default")
     .style("pointer-events", "auto")
