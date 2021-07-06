@@ -62,6 +62,9 @@ export const onBranchClick = function onBranchClick(d) {
   // Can't use AA mut lists as zoom labels currently - URL is bad, but also, means every node has a label, and many conflict...
   let legalBranchLabels;
   // Check has some branch labels, and remove 'aa' ones.
+  // Check if the clicked branch is currently in view
+  // Determines whether to zoom into the clade or zoom out of it and whether to append or remove a clades label from the URL query
+  const isTargetBranchInView = (getIdxOfInViewRootNode(d.n) === d.n.arrayIdx);
   if (d.n.branch_attrs &&
     d.n.branch_attrs.labels !== undefined) {
     legalBranchLabels = Object.keys(d.n.branch_attrs.labels).filter((label) => label !== "aa");
@@ -75,11 +78,11 @@ export const onBranchClick = function onBranchClick(d) {
     );
     // then use the first!
     const key = legalBranchLabels[0];
-    cladeSelected = `${key}:${d.n.branch_attrs.labels[key]}`;
+    cladeSelected = isTargetBranchInView ? "" : `${key}:${d.n.branch_attrs.labels[key]}`;
   }
   /* Clicking on a branch means we want to zoom into the clade defined by that branch
   _except_ when it's the "in-view" root branch, in which case we want to zoom out */
-  const arrayIdxToZoomTo = (getIdxOfInViewRootNode(d.n) === d.n.arrayIdx) ?
+  const arrayIdxToZoomTo = (isTargetBranchInView) ?
     getParentBeyondPolytomy(d.n, this.props.distanceMeasure).arrayIdx :
     d.n.arrayIdx;
   if (d.that.params.orientation[0] === 1) root[0] = arrayIdxToZoomTo;
