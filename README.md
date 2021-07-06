@@ -106,6 +106,39 @@ auspice develop --datasetDir data
 
 Run `auspice --help` or `auspice view --help` to see all the available command line options.
 
+### Visual Studio Code Development Container
+
+Auspice development can also occur in a VSCode development container. 
+
+System requirements:
+- VSCode on Windows, Mac, or Linux
+- Docker
+
+
+```bash
+git clone https://github.com/nextstrain/auspice.git
+cd auspice
+#Ensure the development containers extension is installed
+#This can be done via the GUI or through the below command:
+code --install-extension ms-vscode-remote.remote-containers
+
+#Open VSCode to the cloned directory.
+code .
+
+#Click the remote connection button in the lower left, and pick 'Remote-Container: Reopen in Container'
+
+#Click Terminal->New Terminal. This opens up a command shell inside the development container, then:
+#optional
+npm run get-data
+#optional
+npm run get-narratives
+
+#Show that the application functions normally. 
+#Run in develop mode and view results in browser (localhost:4000)
+auspice develop
+```
+
+
 ## Contributor Information
 
 > We have received a number of generous offers to contribute developer effort to nextstrain (and auspice) following our work on hCoV-19. We welcome contributions! To get started, please review these resources before submitting a pull request:
