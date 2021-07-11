@@ -256,6 +256,7 @@ export const change = function change({
   /* change these things to provided value (unless undefined) */
   newDistance = undefined,
   newLayout = undefined,
+  newTreeZoom = undefined,
   updateLayout = undefined, // todo - this seems identical to `newLayout`
   newBranchLabellingKey = undefined,
   newTipLabelKey = undefined,
@@ -310,7 +311,7 @@ export const change = function change({
     svgPropsToUpdate.add("stroke-width");
     nodePropsToModify["stroke-width"] = branchThickness;
   }
-  if (newDistance || newLayout || updateLayout || zoomIntoClade || svgHasChangedDimensions) {
+  if (newDistance || newLayout || newTreeZoom || updateLayout || zoomIntoClade || svgHasChangedDimensions) {
     elemsToUpdate.add(".tip").add(".branch.S").add(".branch.T").add(".branch");
     elemsToUpdate.add(".vaccineCross").add(".vaccineDottedLine").add(".conf");
     elemsToUpdate.add('.branchLabel').add('.tipLabel');
@@ -344,8 +345,10 @@ export const change = function change({
   /* run calculations as needed - these update properties on the phylotreeNodes (similar to updateNodesWithNewData) */
   /* distance */
   if (newDistance || updateLayout) this.setDistance(newDistance);
-  /* layout (must run after distance) */
-  if (newDistance || newLayout || updateLayout) {
+  /* treeZoom */
+  if (newTreeZoom || updateLayout) this.setTreeZoom(newTreeZoom);
+  /* layout (must run after distance and treeZoom) */
+  if (newDistance || newLayout || newTreeZoom || updateLayout) {
     this.setLayout(newLayout || this.layout, scatterVariables);
   }
   /* show confidences - set this param which actually adds the svg paths for
@@ -356,6 +359,7 @@ export const change = function change({
     svgPropsToUpdate.has(["stroke-width"]) ||
     newDistance ||
     newLayout ||
+    newTreeZoom ||
     updateLayout ||
     zoomIntoClade ||
     svgHasChangedDimensions ||
