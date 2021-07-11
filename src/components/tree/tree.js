@@ -1,6 +1,7 @@
 import React from "react";
 import { withTranslation } from "react-i18next";
 import { updateVisibleTipsAndBranchThicknesses } from "../../actions/tree";
+import { CHANGE_TREE_ZOOM } from "../../actions/types";
 import Card from "../framework/card";
 import Legend from "./legend/legend";
 import PhyloTree from "./phyloTree/phyloTree";
@@ -36,6 +37,7 @@ class Tree extends React.Component {
     this.clearSelectedTip = callbacks.clearSelectedTip.bind(this);
     // this.handleIconClickHOF = callbacks.handleIconClickHOF.bind(this);
     this.redrawTree = () => {
+      this.props.dispatch({ type: CHANGE_TREE_ZOOM, data: "even" });
       this.props.dispatch(updateVisibleTipsAndBranchThicknesses({
         root: [0, 0]
       }));
@@ -95,15 +97,8 @@ class Tree extends React.Component {
   }
 
   getStyles = () => {
-    const activeResetTreeButton = this.props.tree.idxOfInViewRootNode !== 0 ||
-      this.props.treeToo.idxOfInViewRootNode !== 0;
-
-    const filteredTree = !!this.props.tree.idxOfFilteredRoot &&
-      this.props.tree.idxOfInViewRootNode !== this.props.tree.idxOfFilteredRoot;
-    const filteredTreeToo = !!this.props.treeToo.idxOfFilteredRoot &&
-      this.props.treeToo.idxOfInViewRootNode !== this.props.treeToo.idxOfFilteredRoot;
-    const activeZoomButton = filteredTree || filteredTreeToo;
-
+    const activeResetTreeButton = true;
+    const activeZoomButton = true;
     return {
       treeButtonsDiv: {
         zIndex: 100,
@@ -141,6 +136,19 @@ class Tree extends React.Component {
   }
 
   zoomToSelected = () => {
+    // if currently set to "even", start at "zoom"
+    let treeZoomData = "zoom";
+    if (this.props.treeZoom.includes("zoom")) {
+      // if currently at "zoom", increment to "zoom-2"
+      if (!this.props.treeZoom.includes("-")) {
+        treeZoomData = "zoom-2";
+      } else {
+      // if currently at "zoom-2", increment to "zoom-3", etc...
+        const increment = parseInt(this.props.treeZoom.split('-')[1], 10) + 1;
+        treeZoomData = "zoom-" + increment.toString();
+      }
+    }
+    this.props.dispatch({ type: CHANGE_TREE_ZOOM, data: treeZoomData });
     this.props.dispatch(updateVisibleTipsAndBranchThicknesses({
       root: [this.props.tree.idxOfFilteredRoot, this.props.treeToo.idxOfFilteredRoot]
     }));

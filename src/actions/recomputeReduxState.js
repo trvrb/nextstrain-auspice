@@ -58,6 +58,9 @@ const modifyStateViaURLQuery = (state, query) => {
   if (query.m && state.branchLengthsToDisplay === "divAndDate") {
     state["distanceMeasure"] = query.m;
   }
+  if (query.z) {
+    state["treeZoom"] = query.z;
+  }
   if (query.c) {
     state["colorBy"] = query.c;
   }

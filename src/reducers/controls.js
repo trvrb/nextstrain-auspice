@@ -4,6 +4,7 @@ import { defaultGeoResolution,
   defaultDateRange,
   defaultDistanceMeasure,
   defaultLayout,
+  defaultTreeZoom,
   defaultMutType,
   controlsHiddenWidth,
   strainSymbol,
@@ -19,6 +20,7 @@ export const getDefaultControlsState = () => {
   const defaults = {
     distanceMeasure: defaultDistanceMeasure,
     layout: defaultLayout,
+    treeZoom: defaultTreeZoom,
     geoResolution: defaultGeoResolution,
     filters: {},
     colorBy: defaultColorBy,
@@ -51,6 +53,7 @@ export const getDefaultControlsState = () => {
     layout: defaults.layout,
     scatterVariables: {},
     distanceMeasure: defaults.distanceMeasure,
+    treeZoom: defaults.treeZoom,
     dateMin,
     dateMinNumeric,
     dateMax,
@@ -153,6 +156,10 @@ const Controls = (state = getDefaultControlsState(), action) => {
         });
       }
       return Object.assign({}, state, updatesToState);
+    case types.CHANGE_TREE_ZOOM:
+      return Object.assign({}, state, {
+        treeZoom: action.data
+      });
     case types.CHANGE_DATES_VISIBILITY_THICKNESS: {
       const newDates = { quickdraw: action.quickdraw };
       if (action.dateMin) {

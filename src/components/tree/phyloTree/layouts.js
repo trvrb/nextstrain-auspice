@@ -3,10 +3,11 @@
 import { min, max } from "d3-array";
 import scaleLinear from "d3-scale/src/linear";
 import {point as scalePoint} from "d3-scale/src/band";
-import { addLeafCount} from "./helpers";
+import { addLeafCount } from "./helpers";
 import { calculateRegressionThroughRoot, calculateRegressionWithFreeIntercept } from "./regression";
 import { timerStart, timerEnd } from "../../../util/perf";
 import { getTraitFromNode, getDivFromNode } from "../../../util/treeMiscHelpers";
+import { NODE_VISIBLE } from "../../../util/globals";
 
 /**
  * assigns the attribute this.layout and calls the function that
@@ -265,6 +266,64 @@ export const setDistance = function setDistance(distanceAttribute) {
   timerEnd("setDistance");
 };
 
+/**
+ * given nodes add y values (node.yvalue) to every node
+ * Nodes are the phyloTree nodes (i.e. node.n is the redux node)
+ * Nodes must have parent child links established (via createChildrenAndParents)
+ * PhyloTree can subsequently use this information. Accessed by prototypes
+ * rectangularLayout, radialLayout, createChildrenAndParents
+ * side effects: node.n.yvalue (i.e. in the redux node) and node.yRange (i.e. in the phyloTree node)
+ */
+export const calcYValues = (nodes, spacing = "even") => {
+  // console.log("calcYValues started with ", spacing);
+  let total = 0; /* cumulative counter of y value at tip */
+  let calcY; /* fn called calcY(node) to return some amount of y value at a tip */
+  if (spacing.includes("zoom") && 'visibility' in nodes[0]) {
+    const numberOfTips = nodes.length;
+    const numTipsVisible = nodes.map((d) => d.terminal && d.visibility === NODE_VISIBLE).filter((x) => x).length;
+    const yPerVisible = (0.8 * numberOfTips) / numTipsVisible;
+    const yPerNotVisible = (0.2 * numberOfTips) / (numberOfTips - numTipsVisible);
+    calcY = (node) => {
+      total += node.visibility === NODE_VISIBLE ? yPerVisible : yPerNotVisible;
+      return total;
+    };
+  } else { /* fall back to even spacing */
+    if (spacing !== "even") console.warn("falling back to even spacing of y values. Unknown arg:", spacing);
+    calcY = () => ++total;
+  }
+
+  const recurse = (node) => {
+    if (node.children) {
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        recurse(node.children[i]);
+      }
+    } else {
+      node.n.yvalue = calcY(node);
+      node.yRange = [node.n.yvalue, node.n.yvalue];
+      return;
+    }
+    /* if here, then all children have yvalues, but we dont. */
+    node.n.yvalue = node.children.reduce((acc, d) => acc + d.n.yvalue, 0) / node.children.length;
+    node.yRange = [node.n.children[0].yvalue, node.n.children[node.n.children.length - 1].yvalue];
+  };
+  recurse(nodes[0]);
+};
+
+/**
+ * assigns the attribute this.treeZoom and calls the function that
+ * recalculates yvalues based on treeZoom setting
+ * @param treeZoom -- how to zoom nodes, eg ["even", "zoom"]
+ */
+export const setTreeZoom = function setTreeZoom(treeZoom) {
+  timerStart("setTreeZoom");
+  if (typeof treeZoom === "undefined") {
+    this.treeZoom = "even";
+  } else {
+    this.treeZoom = treeZoom;
+  }
+  calcYValues(this.nodes, this.treeZoom);
+  timerEnd("setTreeZoom");
+};
 
 /**
  * Initializes and sets the range of the scales (this.xScale, this.yScale)

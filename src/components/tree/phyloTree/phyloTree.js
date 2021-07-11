@@ -65,6 +65,7 @@ PhyloTree.prototype.updateColorBy = renderers.updateColorBy;
 /* C A L C U L A T E    G E O M E T R I E S  E T C   ( M O D I F I E S    N O D E S ,    N O T    S V G ) */
 PhyloTree.prototype.setDistance = layouts.setDistance;
 PhyloTree.prototype.setLayout = layouts.setLayout;
+PhyloTree.prototype.setTreeZoom = layouts.setTreeZoom;
 PhyloTree.prototype.rectangularLayout = layouts.rectangularLayout;
 PhyloTree.prototype.scatterplotLayout = layouts.scatterplotLayout;
 PhyloTree.prototype.unrootedLayout = layouts.unrootedLayout;

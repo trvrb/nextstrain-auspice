@@ -13,6 +13,7 @@ const Tree = connect((state) => ({
   scatterVariables: state.controls.scatterVariables,
   temporalConfidence: state.controls.temporalConfidence,
   distanceMeasure: state.controls.distanceMeasure,
+  treeZoom: state.controls.treeZoom,
   mutType: state.controls.mutType,
   colorScale: state.controls.colorScale,
   metadata: state.metadata,

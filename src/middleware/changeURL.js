@@ -112,6 +112,10 @@ export const changeURLMiddleware = (store) => (next) => (action) => {
       query.p = action.notInURLState === true ? undefined : action.data;
       break;
     }
+    case types.CHANGE_TREE_ZOOM: {
+      query.z = action.data === state.controls.defaults.treeZoom ? undefined : action.data;
+      break;
+    }
     case types.TOGGLE_SIDEBAR: {
       // we never add this to the URL on purpose -- it should be manually set as it specifies a world
       // where resizes can not open / close the sidebar. The exception is if it's toggled, we

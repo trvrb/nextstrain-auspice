@@ -51,6 +51,12 @@ export const changePhyloTreeViaPropsComparison = (mainTree, phylotree, oldProps,
     args.newDistance = newProps.distanceMeasure;
   }
 
+  /* change treeZoom behavior */
+  if (oldProps.treeZoom !== newProps.treeZoom) {
+    args.newTreeZoom = newProps.treeZoom;
+    args.updateLayout = true;
+  }
+
   /* change in key used to define branch labels, tip labels */
   if (oldProps.canRenderBranchLabels===true && newProps.canRenderBranchLabels===false) {
     args.newBranchLabellingKey = "none";
