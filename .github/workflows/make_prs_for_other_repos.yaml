@@ -22,6 +22,7 @@ jobs:
           echo "auspice_commit=$AUSPICE_COMMIT" >> $GITHUB_ENV
           npm ci
           npm install nextstrain/auspice#${AUSPICE_COMMIT}
+          npm install
           git add package.json package-lock.json
       - name: Create Pull Request for testing on nextstrain.org repo
         if: ${{ github.event_name == 'pull_request' }}
